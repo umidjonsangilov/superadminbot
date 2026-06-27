@@ -23,12 +23,23 @@ load_dotenv()
 BOT_TOKEN = getenv("BOT_TOKEN")
 API_URL = getenv("API_URL", "http://localhost:7535")
 SUPERADMIN_TOKEN = getenv("SUPERADMIN_TOKEN")
+ALLOWED_IDS: set[int] = {
+    int(i.strip()) for i in getenv("ALLOWED_IDS", "").split(",") if i.strip().isdigit()
+}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+
+@dp.update.outer_middleware()
+async def allowed_users_middleware(handler, event, data):
+    user = data.get("event_from_user")
+    if ALLOWED_IDS and (not user or user.id not in ALLOWED_IDS):
+        return
+    return await handler(event, data)
 
 _ALPHABET = string.ascii_letters + string.digits + "!@#$%^&*"
 
